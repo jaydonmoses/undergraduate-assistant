@@ -9,6 +9,14 @@ class UndergraduateAssistantDatabase:
     """Database class for managing users and professors data"""
     
     def __init__(self, db_path: str = "data/undergraduate_assistant.db"):
+        # Convert relative path to absolute path based on backend directory
+        if not os.path.isabs(db_path):
+            # Get the directory where this database.py file is located
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            # Go up one level to backend directory, then to data
+            backend_dir = os.path.dirname(current_dir)
+            db_path = os.path.join(backend_dir, db_path)
+        
         self.db_path = db_path
         # Create data directory if it doesn't exist
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
