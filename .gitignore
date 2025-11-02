@@ -168,6 +168,9 @@ backend/data/*.db
 backend/data/*.sqlite
 backend/data/*.sqlite3
 
+# Allow the main consolidated database to be tracked in the repo
+!backend/data/undergraduate_assistant.db
+
 # Log files
 *.log
 logs/
