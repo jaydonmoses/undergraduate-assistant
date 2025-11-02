@@ -53,6 +53,36 @@ class ProfessorInfo(BaseModel):
     personal_website: Optional[str] = None
     google_scholar: Optional[str] = None
 
+# TODO: Replace logic with agentic flow
+'''
+DESCRIPTION:
+    Agentic flow should match user research interests, skills, and major with professors
+    in similar research fields of labs. Mapping should be broad and interdisciplinary when possible.
+Input:
+    user_info: UserInfo (not including id) [
+        Skills
+        Research Interests
+        Major
+        Notes (Add text box and implement in the DB later)
+    ]   
+
+    professors: List[ProfessorInfo] (all professors from DB) [
+        EVERYTHING in ProfessorInfo
+    ]
+
+Output:
+    recommendations: List[ProfessorInfo] (filtered and ranked professors by relevancy)
+    Short blurb from model on why each professor is a good match (optional, based on less "direct" matches)
+
+Workflow:
+    TODO: Summarize workflow here
+
+Work:
+    1. Create logic flow in dify
+    2. Dockerize dify agent and containerize
+    3. Hook into Docker here
+
+'''
 class ProfessorRecommendationRequest(BaseModel):
     user_info: UserInfo
 
