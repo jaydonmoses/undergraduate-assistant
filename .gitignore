@@ -218,3 +218,20 @@ htmlcov/
 .venv/
 venv/
 env/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker files
+.dockerignore
+
+# Deployment logs
+*.log
+logs/

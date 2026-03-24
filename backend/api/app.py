@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import sys
 import os
+from decouple import config
 
 # Add the parent directory to the path to import our database module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,10 +17,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Get CORS origins from environment variable
+allowed_origins = config("ALLOWED_ORIGINS", default="http://localhost:3000,http://127.0.0.1:3000").split(",")
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # React dev server
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -100,9 +104,24 @@ async def root():
             "POST /prof_info": "Get professor recommendations based on user interests",
             "GET /professors": "Get all professors",
             "GET /professors/search": "Search professors by research area",
-            "GET /research-areas": "Get all available research areas"
+            "GET /research-areas": "Get all available research areas",
+            "GET /health": "Health check endpoint"
         }
     }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and load balancers"""
+    try:
+        # Test database connection
+        db.get_all_research_areas()
+        return {
+            "status": "healthy",
+            "message": "API is running and database is accessible",
+            "version": "1.0.0"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
 
 @app.get("/research-areas")
 async def get_research_areas():
