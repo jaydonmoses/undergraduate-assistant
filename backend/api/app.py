@@ -100,13 +100,22 @@ class ProfessorRecommendationResponse(BaseModel):
 async def root():
     """Serve React app or API info"""
     # Check if frontend build exists
-    frontend_build_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "build")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(current_dir)
+    app_root = os.path.dirname(backend_dir)
+    frontend_build_path = os.path.join(app_root, "frontend", "build")
     index_file = os.path.join(frontend_build_path, "index.html")
     
+    print(f"DEBUG: Looking for frontend at: {frontend_build_path}")
+    print(f"DEBUG: Index file path: {index_file}")
+    print(f"DEBUG: Index file exists: {os.path.exists(index_file)}")
+    
     if os.path.exists(index_file):
+        print("DEBUG: Serving React frontend")
         return FileResponse(index_file)
     
     # Fall back to API info
+    print("DEBUG: Serving API info (frontend not found)")
     return {
         "message": "Welcome to the Undergraduate Assistant API",
         "endpoints": {
@@ -320,11 +329,19 @@ async def search_professors(
 
 
 # Mount static files (React build)
-frontend_build_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "build")
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.dirname(current_file_dir)
+app_root = os.path.dirname(backend_dir)
+frontend_build_path = os.path.join(app_root, "frontend", "build")
+
+print(f"Framework initialization: Looking for frontend at {frontend_build_path}")
 
 if os.path.exists(frontend_build_path):
     # Mount the static directory for CSS, JS, etc.
-    app.mount("/static", StaticFiles(directory=os.path.join(frontend_build_path, "static")), name="static")
+    static_path = os.path.join(frontend_build_path, "static")
+    if os.path.exists(static_path):
+        app.mount("/static", StaticFiles(directory=static_path), name="static")
+        print("Debug: Static files mounted successfully")
     
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
@@ -338,3 +355,5 @@ if os.path.exists(frontend_build_path):
             return FileResponse(index_file)
         
         raise HTTPException(status_code=404, detail="Not found")
+else:
+    print(f"WARNING: Frontend build not found at {frontend_build_path}")

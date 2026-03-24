@@ -2,24 +2,21 @@
 # Stage 1: Build React frontend
 FROM node:18-alpine as frontend-build
 
-WORKDIR /app/frontend
+WORKDIR /app
 
-# Copy frontend package files
-COPY frontend/package*.json ./
+# Copy entire frontend directory
+COPY frontend ./frontend
+
+WORKDIR /app/frontend
 
 # Install dependencies
 RUN npm ci
 
-# Copy frontend source
-COPY frontend/src ./src
-COPY frontend/public ./public
-COPY frontend/tsconfig.json ./
-
-# Build frontend - API URL will be determined at runtime by the frontend
+# Build React app
 ENV REACT_APP_API_URL=http://localhost:8000
 RUN npm run build
 
-# Stage 2: Final image with Python backend and built frontend
+# Stage 2: Python backend
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -42,14 +39,18 @@ COPY backend ./backend
 # Copy built frontend from first stage
 COPY --from=frontend-build /app/frontend/build ./frontend/build
 
-# Copy startup script
-COPY backend/start_server.py .
-
 # Create data directory for database
 RUN mkdir -p backend/data
 
 # Expose port
 EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run backend server
+CMD ["python", "backend/start_server.py"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

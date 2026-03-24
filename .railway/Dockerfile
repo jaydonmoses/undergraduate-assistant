@@ -1,21 +1,22 @@
-# Multi-stage build for complete application
-# Build React frontend
+# Multi-stage build for Railway deployment
+# Stage 1: Build React frontend
 FROM node:18-alpine as frontend-build
+
+WORKDIR /app
+
+# Copy entire frontend directory
+COPY frontend ./frontend
 
 WORKDIR /app/frontend
 
-COPY frontend/package*.json ./
+# Install dependencies
 RUN npm ci
 
-COPY frontend/src ./src
-COPY frontend/public ./public  
-COPY frontend/tsconfig.json ./
-
-# Build with API URL pointing to backend on same host
+# Build React app
 ENV REACT_APP_API_URL=http://localhost:8000
 RUN npm run build
 
-# Python backend with frontend served statically
+# Stage 2: Python backend
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -28,12 +29,14 @@ RUN apt-get update && apt-get install -y \
 
 # Copy Python requirements
 COPY backend/requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY backend ./backend
 
-# Copy built frontend to be served by backend
+# Copy built frontend from first stage
 COPY --from=frontend-build /app/frontend/build ./frontend/build
 
 # Create data directory for database
