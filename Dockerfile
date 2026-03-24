@@ -15,7 +15,8 @@ COPY frontend/src ./src
 COPY frontend/public ./public
 COPY frontend/tsconfig.json ./
 
-# Build frontend
+# Build frontend - API URL will be determined at runtime by the frontend
+ENV REACT_APP_API_URL=http://localhost:8000
 RUN npm run build
 
 # Stage 2: Final image with Python backend and built frontend

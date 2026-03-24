@@ -9,7 +9,24 @@ import {
   ApiError
 } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+// Determine API base URL based on environment
+const getApiBaseUrl = (): string => {
+  // Check if REACT_APP_API_URL is set (build-time variable)
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+
+  // In development, use localhost:8000
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://127.0.0.1:8000';
+  }
+
+  // In production, use the same origin as the app
+  // This works when frontend and backend are served together
+  return `${window.location.protocol}//${window.location.host}`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiService {
   private async handleResponse<T>(response: Response): Promise<T> {

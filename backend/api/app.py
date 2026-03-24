@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import sys
@@ -96,6 +98,15 @@ class ProfessorRecommendationResponse(BaseModel):
 
 @app.get("/")
 async def root():
+    """Serve React app or API info"""
+    # Check if frontend build exists
+    frontend_build_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "build")
+    index_file = os.path.join(frontend_build_path, "index.html")
+    
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    
+    # Fall back to API info
     return {
         "message": "Welcome to the Undergraduate Assistant API",
         "endpoints": {
@@ -306,3 +317,24 @@ async def search_professors(
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error searching professors: {str(e)}")
+
+
+# Mount static files (React build)
+frontend_build_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "build")
+
+if os.path.exists(frontend_build_path):
+    # Mount the static directory for CSS, JS, etc.
+    app.mount("/static", StaticFiles(directory=os.path.join(frontend_build_path, "static")), name="static")
+    
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve React app for client-side routing"""
+        # Don't intercept API routes or Swagger docs
+        if any(full_path.startswith(prefix) for prefix in ["api", "docs", "redoc", "openapi", "static"]):
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        index_file = os.path.join(frontend_build_path, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        
+        raise HTTPException(status_code=404, detail="Not found")
