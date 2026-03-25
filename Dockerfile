@@ -13,7 +13,6 @@ WORKDIR /app/frontend
 RUN npm ci
 
 # Build React app
-ENV REACT_APP_API_URL=http://localhost:8000
 RUN npm run build
 
 # Stage 2: Python backend
@@ -48,16 +47,6 @@ EXPOSE 8000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
-
-# Run backend server
-CMD ["python", "backend/start_server.py"]
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# Set working directory
-WORKDIR /app
 
 # Run backend server
 CMD ["python", "backend/start_server.py"]

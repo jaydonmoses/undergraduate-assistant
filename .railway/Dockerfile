@@ -13,7 +13,6 @@ WORKDIR /app/frontend
 RUN npm ci
 
 # Build React app
-ENV REACT_APP_API_URL=http://localhost:8000
 RUN npm run build
 
 # Stage 2: Python backend
