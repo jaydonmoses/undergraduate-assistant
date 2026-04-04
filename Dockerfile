@@ -1,8 +1,12 @@
 # Multi-stage build for complete application
 # Stage 1: Build React frontend
-FROM node:18-alpine as frontend-build
+FROM node:18-alpine AS frontend-build
 
 WORKDIR /app
+
+# Build-time API URL for Create React App
+ARG REACT_APP_API_URL=http://localhost:8000
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 
 # Copy entire frontend directory
 COPY frontend ./frontend

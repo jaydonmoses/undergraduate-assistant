@@ -18,6 +18,7 @@ if __name__ == "__main__":
     host = config("BACKEND_HOST", default="0.0.0.0")
     port = config("BACKEND_PORT", default=8000, cast=int)
     debug = config("DEBUG", default=False, cast=bool)
+    workers = config("UVICORN_WORKERS", default=1, cast=int)
     
     print("🚀 Starting Undergraduate Assistant API...")
     print(f"📖 API Documentation: http://{host}:{port}/docs")
@@ -35,6 +36,6 @@ if __name__ == "__main__":
         host=host, 
         port=port, 
         reload=debug,
-        workers=1 if debug else 4,
+        workers=1 if debug else workers,
         log_level="info"
     )

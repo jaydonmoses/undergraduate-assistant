@@ -182,13 +182,14 @@ def scrape_all_professor_data(base_url='https://www.khoury.northeastern.edu/peop
             print(f"Critical error during scraping: {e}")
         return []
 
-def populate_database(clear_existing=False, verbose=True):
+def populate_database(clear_existing=False, verbose=True, use_upsert=True):
     """
     Populate the database with professor data by scraping all profiles
     
     Args:
         clear_existing (bool): Whether to clear existing data first
         verbose (bool): Whether to print detailed output
+        use_upsert (bool): Whether to update existing professor rows instead of insert-only
     
     Returns:
         dict: Results of the operation
@@ -236,8 +237,11 @@ def populate_database(clear_existing=False, verbose=True):
             if len(all_professors) > 3:
                 print(f"   ... and {len(all_professors) - 3} more professors")
         
-        # Insert into database
-        inserted_count = db.insert_all_professors(all_professors)
+        # Insert or upsert into database
+        if use_upsert:
+            inserted_count = db.upsert_all_professors(all_professors)
+        else:
+            inserted_count = db.insert_all_professors(all_professors)
         
         if verbose:
             print(f"Successfully inserted {inserted_count} professors into database")
@@ -267,8 +271,10 @@ def main():
     # Get user preferences
     clear_existing = input("Clear existing professor data? (y/N): ").lower().strip() == 'y'
     
+    upsert_mode = input("Use upsert mode (recommended)? (Y/n): ").lower().strip() != 'n'
+
     # Run population
-    result = populate_database(clear_existing=clear_existing, verbose=True)
+    result = populate_database(clear_existing=clear_existing, verbose=True, use_upsert=upsert_mode)
     
     if result['success']:
         # Show statistics

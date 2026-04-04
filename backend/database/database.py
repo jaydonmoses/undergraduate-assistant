@@ -26,6 +26,8 @@ class UndergraduateAssistantDatabase:
         """Initialize the database with users and professors tables"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
+
+        cursor.execute('PRAGMA busy_timeout = 5000')
         
         # Create users table for user input
         cursor.execute('''
@@ -57,6 +59,14 @@ class UndergraduateAssistantDatabase:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS app_metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         
         # Create indexes for better query performance
         # Users table indexes
@@ -67,6 +77,24 @@ class UndergraduateAssistantDatabase:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_professors_name ON professors(name)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_professors_email ON professors(email)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_professors_location ON professors(location)')
+
+        # Backfill columns for legacy databases created with older schema.
+        cursor.execute("PRAGMA table_info(professors)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+        required_columns = {
+            "title": "TEXT",
+            "position": "TEXT",
+            "research_interests": "TEXT",
+            "location": "TEXT",
+            "email": "TEXT",
+            "phone": "TEXT",
+            "personal_website": "TEXT",
+            "google_scholar": "TEXT",
+            "updated_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        }
+        for column_name, column_type in required_columns.items():
+            if column_name not in existing_columns:
+                cursor.execute(f"ALTER TABLE professors ADD COLUMN {column_name} {column_type}")
         
         conn.commit()
         conn.close()
@@ -358,6 +386,88 @@ class UndergraduateAssistantDatabase:
         conn.close()
         
         return inserted_count
+
+    def upsert_all_professors(self, professors_data: List[Dict]) -> int:
+        """Upsert multiple professors into the database."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        upserted_count = 0
+
+        for prof_data in professors_data:
+            try:
+                upserted_count += self._upsert_professor_cursor(cursor, prof_data)
+            except Exception as e:
+                print(f"Error upserting professor {prof_data.get('name', 'Unknown')}: {e}")
+
+        conn.commit()
+        conn.close()
+
+        return upserted_count
+
+    def _upsert_professor_cursor(self, cursor, prof_data: Dict) -> int:
+        """Upsert one professor using either email or name as identity."""
+        research_interests_json = json.dumps(prof_data.get('research_interests', []))
+
+        identity_field = None
+        identity_value = None
+
+        email = (prof_data.get('email') or '').strip()
+        name = (prof_data.get('name') or '').strip()
+
+        if email:
+            identity_field = 'email'
+            identity_value = email
+        elif name:
+            identity_field = 'name'
+            identity_value = name
+        else:
+            return 0
+
+        cursor.execute(
+            f"SELECT id FROM professors WHERE lower({identity_field}) = lower(?) LIMIT 1",
+            (identity_value,),
+        )
+        existing = cursor.fetchone()
+
+        if existing:
+            cursor.execute('''
+                UPDATE professors
+                SET name = ?, title = ?, position = ?, research_interests = ?,
+                    location = ?, email = ?, phone = ?, personal_website = ?,
+                    google_scholar = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', (
+                prof_data.get('name'),
+                prof_data.get('title'),
+                prof_data.get('position'),
+                research_interests_json,
+                prof_data.get('location'),
+                prof_data.get('email'),
+                prof_data.get('phone'),
+                prof_data.get('personal_website'),
+                prof_data.get('google_scholar'),
+                existing[0],
+            ))
+            return 1
+
+        cursor.execute('''
+            INSERT INTO professors (
+                name, title, position, research_interests, location,
+                email, phone, personal_website, google_scholar
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            prof_data.get('name'),
+            prof_data.get('title'),
+            prof_data.get('position'),
+            research_interests_json,
+            prof_data.get('location'),
+            prof_data.get('email'),
+            prof_data.get('phone'),
+            prof_data.get('personal_website'),
+            prof_data.get('google_scholar')
+        ))
+        return 1
     
     def update_professor(self, professor_id: int, prof_data: Dict) -> bool:
         """Update a professor's information"""
@@ -421,6 +531,29 @@ class UndergraduateAssistantDatabase:
         cursor.execute('DELETE FROM professors')
         conn.commit()
         conn.close()
+
+    def set_metadata(self, key: str, value: str) -> None:
+        """Set metadata key/value for scheduler and operational state."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO app_metadata (key, value, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = CURRENT_TIMESTAMP
+        ''', (key, value))
+        conn.commit()
+        conn.close()
+
+    def get_metadata(self, key: str) -> Optional[str]:
+        """Get a metadata value by key."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT value FROM app_metadata WHERE key = ?', (key,))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else None
     
     def get_database_stats(self) -> Dict:
         """Get statistics about the database"""

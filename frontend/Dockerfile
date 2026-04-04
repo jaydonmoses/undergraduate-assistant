@@ -1,7 +1,11 @@
 # Multi-stage build for React app
-FROM node:18-alpine as build
+FROM node:18-alpine AS build
 
 WORKDIR /app
+
+# Build-time API URL for Create React App
+ARG REACT_APP_API_URL=http://localhost:8000
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 
 # Copy package files
 COPY package*.json ./
@@ -17,6 +21,9 @@ RUN npm run build
 
 # Production stage with nginx
 FROM nginx:alpine
+
+# Health check needs curl
+RUN apk add --no-cache curl
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/nginx.conf

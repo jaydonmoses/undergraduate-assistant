@@ -22,6 +22,12 @@ Edit `.env` file with your settings:
 BACKEND_HOST=0.0.0.0
 BACKEND_PORT=8000
 DEBUG=false
+UVICORN_WORKERS=1
+ENABLE_SCHEDULER=true
+SCRAPER_INTERVAL_HOURS=168
+SCRAPER_POLL_SECONDS=60
+SCRAPER_TOTAL_PAGES=56
+SCRAPER_ADMIN_TOKEN=replace-with-a-secret
 
 # Frontend Configuration
 REACT_APP_API_URL=http://your-domain.com:8000
@@ -140,6 +146,15 @@ Use provided Docker images with Kubernetes manifests (create separately).
 ---
 
 ## 📊 Monitoring and Maintenance
+
+### Weekly Scraper Scheduler
+- Scheduler runs inside the backend service, so no second Railway service is required.
+- `ENABLE_SCHEDULER=true` enables automatic refreshes.
+- `SCRAPER_INTERVAL_HOURS=168` configures weekly refreshes.
+- `SCRAPER_POLL_SECONDS=60` controls how often the scheduler checks if a run is due.
+- `SCRAPER_TOTAL_PAGES=56` controls scrape breadth (use `1` for smoke tests).
+- API status endpoint: `GET /scraper/status`
+- Manual trigger endpoint: `POST /scraper/trigger` with `X-Admin-Token` header.
 
 ### Health Checks
 - Backend: `GET /health`

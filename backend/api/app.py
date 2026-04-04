@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional
+from contextlib import asynccontextmanager
 import sys
 import os
 from decouple import config
@@ -12,11 +13,22 @@ from decouple import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.database import UndergraduateAssistantDatabase
+from services.scheduler import start_scheduler, stop_scheduler, get_scheduler_status, run_weekly_scrape
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    start_scheduler()
+    try:
+        yield
+    finally:
+        stop_scheduler()
 
 app = FastAPI(
     title="Undergraduate Assistant API",
     description="API for connecting undergraduate students with professors based on research interests",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Get CORS origins from environment variable
@@ -134,14 +146,48 @@ async def health_check():
     """Health check endpoint for monitoring and load balancers"""
     try:
         # Test database connection
-        db.get_all_research_areas()
+        db.get_database_stats()
         return {
             "status": "healthy",
             "message": "API is running and database is accessible",
-            "version": "1.0.0"
+            "version": "1.0.0",
+            "scraper": {
+                "status": db.get_metadata("scraper_status"),
+                "last_success_at": db.get_metadata("scraper_last_success_at"),
+            },
         }
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
+
+
+@app.get("/scraper/status")
+async def scraper_status():
+    """Get scheduler and scraper execution status."""
+    return get_scheduler_status()
+
+
+@app.post("/scraper/trigger")
+async def trigger_scraper(
+    background_tasks: BackgroundTasks,
+    x_admin_token: Optional[str] = Header(default=None),
+):
+    """Trigger an on-demand scrape with admin token protection."""
+    expected_token = config("SCRAPER_ADMIN_TOKEN", default="")
+
+    if not expected_token:
+        raise HTTPException(
+            status_code=503,
+            detail="Manual trigger is disabled. Set SCRAPER_ADMIN_TOKEN to enable.",
+        )
+
+    if x_admin_token != expected_token:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if db.get_metadata("scraper_status") == "running":
+        return {"status": "ignored", "message": "Scraper is already running"}
+
+    background_tasks.add_task(run_weekly_scrape)
+    return {"status": "accepted", "message": "Scraper run has been queued"}
 
 @app.get("/research-areas")
 async def get_research_areas():
