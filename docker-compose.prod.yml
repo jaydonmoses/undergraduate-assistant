@@ -15,7 +15,7 @@ services:
       - SCRAPER_INTERVAL_HOURS=${SCRAPER_INTERVAL_HOURS:-168}
       - SCRAPER_POLL_SECONDS=${SCRAPER_POLL_SECONDS:-60}
       - SCRAPER_ADMIN_TOKEN=${SCRAPER_ADMIN_TOKEN:-}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://0.0.0.0:3000}
     volumes:
       - ./backend/data:/app/backend/data
     networks:
