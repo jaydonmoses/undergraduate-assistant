@@ -6,10 +6,19 @@ import os
 from decouple import config
 
 if __name__ == "__main__":
-    # Get the backend directory (handles both local and deployed setups)
+    # Resolve the backend/api layout for both direct execution and Docker images.
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    backend_dir = current_dir if os.path.basename(current_dir) == "backend" else os.path.join(current_dir, "backend")
+    if os.path.isdir(os.path.join(current_dir, "api")):
+        backend_dir = current_dir
+    elif os.path.isdir(os.path.join(current_dir, "backend", "api")):
+        backend_dir = os.path.join(current_dir, "backend")
+    else:
+        backend_dir = current_dir
+
     api_dir = os.path.join(backend_dir, "api")
+
+    if not os.path.isdir(api_dir):
+        raise FileNotFoundError(f"Unable to locate API directory at {api_dir}")
     
     sys.path.insert(0, backend_dir)
     sys.path.insert(0, api_dir)
@@ -27,7 +36,7 @@ if __name__ == "__main__":
     
     import uvicorn
     
-    # Change working directory to api
+    # Change working directory to api so uvicorn can import app:app reliably.
     os.chdir(api_dir)
     
     # Start the server with production-ready settings
