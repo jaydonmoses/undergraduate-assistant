@@ -11,9 +11,17 @@ import {
 
 // Determine API base URL based on environment
 const getApiBaseUrl = (): string => {
+  const configuredApiUrl = (process.env.REACT_APP_API_URL || '').trim();
+
   // Check if REACT_APP_API_URL is set (build-time variable)
-  if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
+  if (configuredApiUrl) {
+    const isLocalApiUrl = /:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(\/|$)/i.test(configuredApiUrl);
+    const isLocalHost = ['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
+
+    // Ignore localhost API URLs when app is running on a remote host.
+    if (!isLocalApiUrl || isLocalHost) {
+      return configuredApiUrl;
+    }
   }
 
   // In development, use localhost:8000
