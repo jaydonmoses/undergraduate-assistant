@@ -21,6 +21,8 @@ export interface ProfessorInfo {
   phone?: string;
   personal_website?: string;
   google_scholar?: string;
+  match_score?: number;
+  match_reason?: string;
 }
 
 export interface ProfessorRecommendationRequest {

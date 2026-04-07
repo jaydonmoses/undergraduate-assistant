@@ -233,6 +233,21 @@ cd backend
 python -m pytest
 ```
 
+### Deployment Smoke Test
+Run this before publishing to confirm health and recommendations work end-to-end.
+
+```bash
+cd backend
+python smoke_test.py --base-url https://your-api-domain.com
+```
+
+Local example:
+
+```bash
+cd backend
+python smoke_test.py --base-url http://127.0.0.1:8000
+```
+
 ### Frontend Tests
 ```bash
 cd frontend  

@@ -160,6 +160,21 @@ Use provided Docker images with Kubernetes manifests (create separately).
 - Backend: `GET /health`
 - Frontend: Standard HTTP check on root path
 
+### Release Smoke Test
+Before publishing or after deployment, run:
+
+```bash
+cd backend
+python smoke_test.py --base-url https://your-api-domain.com
+```
+
+For local verification:
+
+```bash
+cd backend
+python smoke_test.py --base-url http://127.0.0.1:8000
+```
+
 ### Logs
 - Docker logs: `docker-compose logs -f`  
 - Application logs are output to stdout/stderr

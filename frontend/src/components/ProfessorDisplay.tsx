@@ -83,9 +83,19 @@ export const ProfessorDisplay: React.FC<ProfessorDisplayProps> = ({
                 <h3 className="professor-name">{professor.name}</h3>
                 <p className="professor-title">{professor.title}</p>
                 <p className="professor-position">{professor.position}</p>
+                {typeof professor.match_score === 'number' && professor.match_score > 0 && (
+                  <p className="professor-position">Match score: {professor.match_score.toFixed(1)}</p>
+                )}
               </div>
 
               <div className="professor-details">
+                {professor.match_reason && (
+                  <div className="detail-section">
+                    <h4>Why this match</h4>
+                    <p className="location">{professor.match_reason}</p>
+                  </div>
+                )}
+
                 {/* Research Interests */}
                 <div className="detail-section">
                   <h4>Research Interests</h4>

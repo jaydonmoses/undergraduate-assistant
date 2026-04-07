@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.database import UndergraduateAssistantDatabase
 from services.scheduler import start_scheduler, stop_scheduler, get_scheduler_status, run_weekly_scrape
+from services.matching import rank_professors
 
 
 @asynccontextmanager
@@ -76,6 +77,8 @@ class ProfessorInfo(BaseModel):
     phone: Optional[str] = None
     personal_website: Optional[str] = None
     google_scholar: Optional[str] = None
+    match_score: float = 0.0
+    match_reason: Optional[str] = None
 
 # TODO: Replace logic with agentic flow
 '''
@@ -249,12 +252,12 @@ async def create_or_update_user_info(user_info: UserInfo):
             db.update_user(user_id=user_id, user_data=user_data)
         else:
             # Create new user
-            user_id = db.insert_user(
-                name=user_info.name,
-                major=user_info.major,
-                research_interests=user_info.research_interests,
-                skills=user_info.skills
-            )
+            user_id = db.insert_user({
+                'name': user_info.name,
+                'major': user_info.major,
+                'research_interests': user_info.research_interests,
+                'skills': user_info.skills
+            })
         
         return UserResponse(
             user_id=user_id,
@@ -268,7 +271,7 @@ async def create_or_update_user_info(user_info: UserInfo):
 
 @app.post("/prof_info", response_model=ProfessorRecommendationResponse)
 async def get_professor_recommendations(request: ProfessorRecommendationRequest):
-    """Save user info to database and return all professors (not filtered)"""
+    """Save user info and return ranked professor recommendations."""
     try:
         # First, save the user information to the database
         user_info = request.user_info
@@ -296,12 +299,20 @@ async def get_professor_recommendations(request: ProfessorRecommendationRequest)
             }
             user_id = db.insert_user(user_data)
         
-        # Get ALL professors (not filtered by research interests)
+        # Rank professors using user profile inputs.
         professors = db.get_all_professors()
+        min_match_score = config("MATCH_MIN_SCORE", default=5.0, cast=float)
+        ranked_professors = rank_professors(
+            user_data,
+            professors,
+            top_k=20,
+            min_score=min_match_score,
+            allow_fallback=True,
+        )
         
         # Convert to ProfessorInfo objects
         recommendations = []
-        for prof in professors:
+        for prof in ranked_professors:
             recommendations.append(ProfessorInfo(
                 name=prof.get('name', ''),
                 title=prof.get('title', ''),
@@ -311,7 +322,9 @@ async def get_professor_recommendations(request: ProfessorRecommendationRequest)
                 email=prof.get('email', ''),
                 phone=prof.get('phone', ''),
                 personal_website=prof.get('personal_website', ''),
-                google_scholar=prof.get('google_scholar', '')
+                google_scholar=prof.get('google_scholar', ''),
+                match_score=prof.get('match_score', 0.0),
+                match_reason=prof.get('match_reason', None)
             ))
         
         return ProfessorRecommendationResponse(
